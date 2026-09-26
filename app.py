@@ -558,7 +558,111 @@ st.plotly_chart(
     fig_expertise,
     use_container_width=True
 )
+# ---------------------------------------------------
+# INSTRUCTOR RATING TIER ANALYSIS
+# ---------------------------------------------------
 
+st.markdown(
+    '<div class="section-title">⭐ Instructor Rating Tier Analysis</div>',
+    unsafe_allow_html=True
+)
+
+# Create rating tiers
+tier_data = teachers.copy()
+
+tier_data["Rating_Tier"] = pd.cut(
+    tier_data["TeacherRating"],
+    bins=[-float("inf"), 3, 4, float("inf")],
+    labels=["Low Rated", "Mid Rated", "High Rated"],
+    right=False
+)
+
+# Course rating by instructor rating tier
+tier_course_data = course_teacher.merge(
+    tier_data[["TeacherID", "Rating_Tier"]],
+    on="TeacherID",
+    how="left"
+)
+
+tier_summary = (
+    tier_course_data.groupby("Rating_Tier", observed=True)
+    .agg(
+        Average_Course_Rating=("CourseRating", "mean"),
+        Courses=("CourseID", "nunique")
+    )
+    .reset_index()
+)
+
+# Enrollment count by rating tier
+tier_enrollment = transactions.merge(
+    tier_data[["TeacherID", "Rating_Tier"]],
+    on="TeacherID",
+    how="left"
+)
+
+enrollment_summary = (
+    tier_enrollment.groupby("Rating_Tier", observed=True)
+    .agg(
+        Enrollments=("TransactionID", "nunique")
+    )
+    .reset_index()
+)
+
+# Combine both summaries
+tier_summary = tier_summary.merge(
+    enrollment_summary,
+    on="Rating_Tier",
+    how="left"
+)
+
+# Display table
+st.dataframe(
+    tier_summary,
+    use_container_width=True,
+    hide_index=True
+)
+
+# Course Rating comparison
+fig_tier_course = px.bar(
+    tier_summary,
+    x="Rating_Tier",
+    y="Average_Course_Rating",
+    title="Average Course Rating by Instructor Rating Tier",
+    text_auto=".2f",
+    template="plotly_white"
+)
+
+fig_tier_course.update_layout(
+    height=450,
+    xaxis_title="Instructor Rating Tier",
+    yaxis_title="Average Course Rating"
+)
+
+st.plotly_chart(
+    fig_tier_course,
+    use_container_width=True
+)
+
+# Enrollment comparison
+fig_tier_enrollment = px.bar(
+    tier_summary,
+    x="Rating_Tier",
+    y="Enrollments",
+    title="Enrollment Volume by Instructor Rating Tier",
+    text_auto=True,
+    template="plotly_white"
+)
+
+fig_tier_enrollment.update_layout(
+    height=450,
+    xaxis_title="Instructor Rating Tier",
+    yaxis_title="Number of Enrollments"
+)
+
+st.plotly_chart(
+    fig_tier_enrollment,
+    use_container_width=True
+)
 
 # ---------------------------------------------------
 # FOOTER
